@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goods & Photo Collector - Modern Edition</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fafafa',
+                            100: '#f4f4f5',
+                            200: '#e4e4e7',
+                            300: '#d4d4d8',
+                            400: '#a1a1aa',
+                            500: '#71717a',
+                            600: '#52525b',
+                            700: '#3f3f46',
+                            800: '#27272a',
+                            900: '#18181b',
+                        },
+                        pinkaccent: {
+                            50: '#fff1f2',
+                            100: '#ffe4e6',
+                            200: '#fecdd3',
+                            300: '#fda4af',
+                            400: '#fb7185',
+                            500: '#f43f5e',
+                        }
+                    },
+                    borderRadius: {
+                        '4xl': '2rem',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- SortableJS -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .ios-shadow { box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05); }
+        .floating-bar-shadow { box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12); }
+    </style>
+</head>
+<body class="bg-[#f8f9fa] text-slate-800 antialiased min-h-screen pb-32" x-data="photoApp()" x-init="initApp()">
+
+    <!-- ログイン・新規登録画面 -->
+    <div x-show="!isLoggedIn" class="fixed inset-0 z-[200] bg-[#f8f9fa] flex items-center justify-center p-6">
+        <div class="bg-white p-8 rounded-4xl ios-shadow w-full max-w-sm space-y-6 border border-slate-100/80">
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 bg-pinkaccent-50 text-pinkaccent-500 rounded-2xl flex items-center justify-center mx-auto text-xl font-bold mb-3">
+                    <i class="fa-solid fa-sparkles"></i>
+                </div>
+                <h2 class="font-bold text-slate-900 text-xl tracking-tight" x-text="isAuthLogin ? 'ログイン' : '新規アカウント登録'"></h2>
+                <p class="text-xs text-slate-400">MacとiPhoneでデータを同期します</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">メールアドレス</label>
+                    <input type="email" x-model="authEmail" class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-pinkaccent-300">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">パスワード</label>
+                    <input type="password" x-model="authPassword" placeholder="6文字以上" class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-pinkaccent-300">
+                </div>
+
+                <p x-show="authError" class="text-xs text-rose-500 text-center font-bold" x-text="authError"></p>
+
+                <button @click="handleAuth()" class="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold shadow-md transition active:scale-98">
+                    <span x-text="isAuthLogin ? 'ログインする' : '登録して始める'"></span>
+                </button>
+            </div>
+
+            <div class="text-center pt-2">
+                <button @click="isAuthLogin = !isAuthLogin; authError = ''" class="text-xs text-slate-500 hover:text-slate-900 font-semibold">
+                    <span x-text="isAuthLogin ? 'アカウントをお持ちでない方（新規登録）' : 'アカウントをお持ちの方（ログイン）'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- アプリ本体 -->
+    <div x-show="isLoggedIn" x-cloak>
+        
+        <!-- ヘッダー -->
+        <header class="sticky top-0 z-30 bg-[#f8f9fa]/90 backdrop-blur-xl border-b border-slate-200/50 px-5 py-3">
+            <div class="max-w-5xl mx-auto space-y-3">
+                
+                <!-- 検索 ＆ タブ ＆ メニューバー -->
+                <div class="flex items-center gap-3 pt-1">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" x-model="searchQuery" placeholder="検索..." 
+                            class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/80 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 transition placeholder-slate-400 shadow-2xs">
+                    </div>
+
+                    <div class="bg-slate-200/60 p-1 rounded-2xl flex items-center shrink-0">
+                        <button @click="currentTab = 'photos'" 
+                            :class="currentTab === 'photos' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 font-medium'" 
+                            class="px-3.5 py-1.5 rounded-xl text-xs transition">
+                            写真
+                        </button>
+                        <button @click="currentTab = 'goods'" 
+                            :class="currentTab === 'goods' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 font-medium'" 
+                            class="px-3.5 py-1.5 rounded-xl text-xs transition">
+                            グッズ
+                        </button>
+                    </div>
+
+                    <button @click="showSettings = !showSettings" class="w-9 h-9 bg-white border border-slate-200/60 rounded-full flex items-center justify-center text-slate-600 hover:bg-slate-50 shadow-2xs transition shrink-0">
+                        <i class="fa-solid fa-ellipsis"></i>
+                    </button>
+                </div>
+
+                <!-- 横スクロール グループタブ -->
+                <div class="flex items-center gap-2 pt-1 overflow-x-auto hide-scrollbar">
+                    <button @click="selectedGroupFilter = 'ALL'" 
+                        :class="selectedGroupFilter === 'ALL' ? 'bg-slate-900 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/80'"
+                        class="px-4 py-1.5 rounded-full text-xs transition whitespace-nowrap shrink-0 shadow-2xs">
+                        すべて
+                    </button>
+                    
+                    <div x-ref="sortableGroupContainer" class="flex items-center gap-2">
+                        <template x-for="(g, index) in groupList" :key="g">
+                            <div class="group-tab-item shrink-0" :data-group="g">
+                                <button 
+                                    @pointerdown="onGroupPointerDown($event, g)"
+                                    @pointerup="onGroupPointerUp($event, g)"
+                                    @contextmenu.prevent
+                                    :class="selectedGroupFilter === g ? 'bg-slate-900 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/80'"
+                                    class="px-4 py-1.5 rounded-full text-xs transition cursor-grab active:cursor-grabbing whitespace-nowrap select-none touch-none shadow-2xs"
+                                    x-text="g">
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- ステータス ＆ タグ絞り込みバー -->
+                <div class="flex flex-wrap items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-200/40">
+                    <template x-if="currentTab === 'photos'">
+                        <div class="flex items-center gap-3 font-semibold text-[11px]">
+                            <span>全 <strong x-text="totalPhotosCount" class="text-slate-900">0</strong> 種</span>
+                            <span>計 <strong x-text="totalCardsCount" class="text-slate-900">0</strong> 枚</span>
+                            <span class="text-slate-900 font-extrabold">¥<span x-text="totalPhotosPrice.toLocaleString()">0</span></span>
+                        </div>
+                    </template>
+                    <template x-if="currentTab === 'goods'">
+                        <div class="flex items-center gap-3 font-semibold text-[11px]">
+                            <span>全 <strong x-text="totalGoodsCount" class="text-slate-900">0</strong> 点</span>
+                            <span>所持数 <strong x-text="totalGoodsItems" class="text-slate-900">0</strong> 個</span>
+                        </div>
+                    </template>
+
+                    <template x-if="selectedTagFilter">
+                        <div class="flex items-center gap-1.5">
+                            <span class="bg-pinkaccent-50 text-pinkaccent-500 font-bold px-2.5 py-0.5 rounded-full text-[10px] flex items-center gap-1">
+                                <span x-text="'#' + selectedTagFilter"></span>
+                                <button @click="selectedTagFilter = ''" class="hover:text-pinkaccent-700"><i class="fa-solid fa-xmark"></i></button>
+                            </span>
+                        </div>
+                    </template>
+                </div>
+
+            </div>
+
+            <!-- バックアップ ＆ ログアウトポップオーバー -->
+            <div x-show="showSettings" @click.outside="showSettings = false" x-cloak
+                class="absolute right-5 top-16 bg-white border border-slate-200/80 shadow-2xl rounded-3xl p-3 w-64 z-50 text-xs space-y-1">
+                <div class="font-bold text-slate-400 px-3 py-1 text-[10px] uppercase tracking-wider">データ管理</div>
+                <button @click="exportData()" class="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl flex items-center gap-2 text-slate-700 font-medium">
+                    <i class="fa-solid fa-download text-slate-400"></i> バックアップ出力 (JSON)
+                </button>
+                <label class="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl flex items-center gap-2 text-slate-700 font-medium cursor-pointer">
+                    <i class="fa-solid fa-upload text-slate-400"></i> バックアップ復元 (JSON)
+                    <input type="file" @change="importData($event)" accept=".json" class="hidden">
+                </label>
+                <div class="border-t border-slate-100 pt-1 mt-1">
+                    <button @click="handleLogout()" class="w-full text-left px-3 py-2 hover:bg-rose-50 rounded-xl flex items-center gap-2 text-rose-500 font-bold">
+                        <i class="fa-solid fa-right-from-bracket"></i> ログアウト
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- メインコンテンツ -->
+        <main class="max-w-5xl mx-auto px-5 pt-6">
+
+            <!-- 公式写真タブ -->
+            <div x-show="currentTab === 'photos'">
+                <template x-if="filteredPhotoSeriesList.length === 0">
+                    <div class="text-center py-20 px-4 bg-white rounded-4xl ios-shadow border border-slate-100 my-6">
+                        <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+                            <i class="fa-solid fa-camera"></i>
+                        </div>
+                        <h3 class="text-slate-800 font-bold mb-1 text-sm">写真データがありません</h3>
+                        <p class="text-slate-400 text-xs mb-6">下の「＋」ボタンから追加してください。</p>
+                    </div>
+                </template>
+
+                <div class="space-y-8">
+                    <template x-for="series in filteredPhotoSeriesList" :key="series.name">
+                        <section class="space-y-3">
+                            
+                            <div class="flex items-center justify-between px-1">
+                                <div class="flex items-center gap-2">
+                                    <h2 class="font-extrabold text-slate-900 text-base" x-text="series.name"></h2>
+                                    <span :class="series.era === 'Jr' ? 'bg-blue-50 text-blue-600' : 'bg-pinkaccent-50 text-pinkaccent-500'"
+                                        class="text-[10px] font-bold px-2.5 py-0.5 rounded-full" x-text="series.era === 'Jr' ? 'デビュー前' : 'デビュー後'"></span>
+                                </div>
+                                <div class="text-xs text-slate-400 font-semibold">
+                                    計 <strong x-text="getSeriesTotalCount(series.name)" class="text-slate-800"></strong> 枚 / ¥<span x-text="getSeriesTotalPrice(series.name).toLocaleString()"></span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                                <template x-for="item in series.items" :key="item.id">
+                                    <div class="group bg-white rounded-3xl border border-slate-100 ios-shadow overflow-hidden flex flex-col justify-between hover:border-slate-300 transition duration-200">
+                                        
+                                        <div @click="openPhotoDetailModal(item)" class="aspect-[3/4] bg-slate-50 relative cursor-pointer overflow-hidden">
+                                            <template x-if="item.image">
+                                                <img :src="item.image" :alt="item.code" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                            </template>
+                                            <template x-if="!item.image">
+                                                <div class="w-full h-full flex flex-col items-center justify-center text-slate-300 p-2 text-center">
+                                                    <i class="fa-regular fa-image text-2xl mb-1"></i>
+                                                    <span class="text-[10px] text-slate-400 font-bold">＋画像登録</span>
+                                                </div>
+                                            </template>
+
+                                            <div class="absolute top-2 right-2 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                                                ×<span x-text="item.count"></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="p-3 flex flex-col gap-2">
+                                            <div class="flex items-center justify-between">
+                                                <div class="font-mono font-bold text-slate-800 text-xs tracking-wide truncate" x-text="item.code"></div>
+                                                <div class="text-[10px] font-bold text-slate-400">¥<span x-text="item.price"></span></div>
+                                            </div>
+                                            
+                                            <template x-if="item.tags && item.tags.length > 0">
+                                                <div class="flex flex-wrap gap-1">
+                                                    <template x-for="tag in item.tags" :key="tag">
+                                                        <button @click.stop="selectedTagFilter = tag" class="bg-slate-100 text-slate-600 text-[9px] font-bold px-1.5 py-0.5 rounded-md hover:bg-slate-200 transition">
+                                                            #<span x-text="tag"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </template>
+
+                                            <div class="flex items-center justify-between bg-slate-50 rounded-2xl p-1 border border-slate-100">
+                                                <button @click.stop="updatePhotoCount(item.id, -1)" class="w-6 h-6 bg-white text-slate-700 rounded-xl flex items-center justify-center text-xs font-bold shadow-2xs hover:bg-slate-100">
+                                                    <i class="fa-solid fa-minus"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-slate-800" x-text="item.count"></span>
+                                                <button @click.stop="updatePhotoCount(item.id, 1)" class="w-6 h-6 bg-slate-900 text-white rounded-xl flex items-center justify-center text-xs font-bold shadow-2xs hover:bg-slate-800">
+                                                    <i class="fa-solid fa-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </template>
+                            </div>
+
+                        </section>
+                    </template>
+                </div>
+            </div>
+
+            <!-- アクスタ・グッズタブ -->
+            <div x-show="currentTab === 'goods'">
+                <template x-if="filteredGoodsSeriesList.length === 0">
+                    <div class="text-center py-20 px-4 bg-white rounded-4xl ios-shadow border border-slate-100 my-6">
+                        <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        </div>
+                        <h3 class="text-slate-800 font-bold mb-1 text-sm">グッズデータがありません</h3>
+                        <p class="text-slate-400 text-xs mb-6">下の「＋」ボタンから追加してください。</p>
+                    </div>
+                </template>
+
+                <div class="space-y-8">
+                    <template x-for="series in filteredGoodsSeriesList" :key="series.name">
+                        <section class="space-y-3">
+                            
+                            <div class="flex items-center justify-between px-1">
+                                <h2 class="font-extrabold text-slate-900 text-base" x-text="series.name"></h2>
+                                <div class="text-xs text-slate-400 font-semibold">
+                                    計 <strong x-text="getGoodsSeriesTotalItems(series.name)" class="text-slate-800"></strong> 個
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                                <template x-for="item in series.items" :key="item.id">
+                                    <div class="group bg-white rounded-3xl border border-slate-100 ios-shadow overflow-hidden flex flex-col justify-between hover:border-slate-300 transition duration-200">
+                                        
+                                        <div @click="openGoodsDetailModal(item)" class="aspect-square bg-slate-50 relative cursor-pointer overflow-hidden p-3">
+                                            <template x-if="item.image">
+                                                <img :src="item.image" :alt="item.title" class="w-full h-full object-contain group-hover:scale-105 transition duration-300">
+                                            </template>
+                                            <template x-if="!item.image">
+                                                <div class="w-full h-full flex flex-col items-center justify-center text-slate-300 p-2 text-center">
+                                                    <i class="fa-solid fa-icons text-2xl mb-1"></i>
+                                                    <span class="text-[10px] text-slate-400 font-bold">＋画像登録</span>
+                                                </div>
+                                            </template>
+
+                                            <div class="absolute top-2 right-2 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                                                ×<span x-text="item.count"></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="p-3 flex flex-col gap-2">
+                                            <div class="font-bold text-slate-800 text-xs truncate" x-text="item.title"></div>
+                                            
+                                            <div class="flex items-center justify-between bg-slate-50 rounded-2xl p-1 border border-slate-100">
+                                                <button @click.stop="updateGoodsCount(item.id, -1)" class="w-6 h-6 bg-white text-slate-700 rounded-xl flex items-center justify-center text-xs font-bold shadow-2xs hover:bg-slate-100">
+                                                    <i class="fa-solid fa-minus"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-slate-800" x-text="item.count"></span>
+                                                <button @click.stop="updateGoodsCount(item.id, 1)" class="w-6 h-6 bg-slate-900 text-white rounded-xl flex items-center justify-center text-xs font-bold shadow-2xs hover:bg-slate-800">
+                                                    <i class="fa-solid fa-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </template>
+                            </div>
+
+                        </section>
+                    </template>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- 浮かび上がるボトムナビゲーションバー -->
+        <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/90 backdrop-blur-2xl border border-slate-200/80 rounded-full px-6 py-3 flex items-center gap-8 floating-bar-shadow">
+            <button @click="currentTab = 'photos'" :class="currentTab === 'photos' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'" class="transition flex flex-col items-center">
+                <i class="fa-solid fa-camera text-base"></i>
+            </button>
+            
+            <button @click="currentTab === 'photos' ? openAddPhotoModal() : openAddGoodsModal()" class="w-11 h-11 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white rounded-full flex items-center justify-center text-lg font-bold shadow-md transition">
+                <i class="fa-solid fa-plus"></i>
+            </button>
+
+            <button @click="currentTab = 'goods'" :class="currentTab === 'goods' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'" class="transition flex flex-col items-center">
+                <i class="fa-solid fa-wand-magic-sparkles text-base"></i>
+            </button>
+        </div>
+
+        <!-- 【アイテム削除確認 モーダル（アプリ風警告画面）】 -->
+        <div x-show="showItemDeleteModal" class="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition.opacity>
+            <div class="bg-white rounded-4xl shadow-2xl border border-slate-100 w-full max-w-sm overflow-hidden p-6 text-center space-y-4">
+                <div class="w-12 h-12 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto text-xl font-bold">
+                    <i class="fa-regular fa-trash-can"></i>
+                </div>
+                <div>
+                    <h3 class="font-extrabold text-slate-900 text-base" x-text="itemToDeleteType === 'photo' ? '写真を削除しますか？' : 'グッズを削除しますか？'"></h3>
+                    <p class="text-xs text-slate-400 mt-1">この操作は取り消せません。登録データから完全に削除されます。</p>
+                </div>
+                <div class="flex items-center gap-2 pt-2">
+                    <button type="button" @click="showItemDeleteModal = false" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+                        キャンセル
+                    </button>
+                    <button type="button" @click="confirmExecuteDelete()" class="flex-1 py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition shadow-xs">
+                        削除する
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 【グループ名追加モーダル】 -->
+        <div x-show="showAddGroupModal" class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition.opacity>
+            <div @click.outside="showAddGroupModal = false" class="bg-white rounded-4xl shadow-2xl border border-slate-100 w-full max-w-sm overflow-hidden p-6 space-y-4">
+                <div class="text-center space-y-1">
+                    <div class="w-12 h-12 bg-slate-100 text-slate-800 rounded-2xl flex items-center justify-center mx-auto text-xl mb-2">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-base">グループ名の追加</h3>
+                    <p class="text-xs text-slate-400">新しいグループ名を入力してください</p>
+                </div>
+
+                <div>
+                    <input type="text" x-model="newGroupNameInput" @keydown.enter.prevent.stop="confirmAddGroup()" placeholder="例: なにわ男子, 美 少年..." 
+                        class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 mb-4">
+
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="showAddGroupModal = false" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+                            キャンセル
+                        </button>
+                        <button type="button" @click="confirmAddGroup()" class="flex-1 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition">
+                            追加する
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 【グループ削除確認モーダル】 -->
+        <div x-show="showGroupDeleteModal" class="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition.opacity>
+            <div class="bg-white rounded-4xl shadow-2xl border border-slate-100 w-full max-w-sm overflow-hidden p-6 text-center space-y-4">
+                <div class="w-12 h-12 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-regular fa-trash-can"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-base" x-text="`「${deletingGroupName}」を削除しますか？`"></h3>
+                    <p class="text-xs text-slate-400 mt-1">グループタブから取り除かれます。（登録済みの写真・グッズデータは削除されません）</p>
+                </div>
+                <div class="flex items-center gap-2 pt-2">
+                    <button type="button" @click="showGroupDeleteModal = false" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+                        キャンセル
+                    </button>
+                    <button type="button" @click="confirmDeleteGroup()" class="flex-1 py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition">
+                        削除する
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 【写真個別追加/編集モーダル】 -->
+        <div x-show="showAddPhotoModal" class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition.opacity>
+            <div @click.outside="showAddPhotoModal = false" class="bg-white rounded-4xl shadow-2xl border border-slate-100 w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+                <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-extrabold text-slate-900 text-base" x-text="isEditingPhoto ? '写真情報の編集' : '写真を新規追加'"></h3>
+                    <button @click="showAddPhotoModal = false" class="text-slate-400 hover:text-slate-900 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+
+                <form @submit.prevent="savePhoto()" class="p-6 overflow-y-auto space-y-5 flex-1">
+                    
+                    <!-- 0. グループ選択 -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">グループを選択</label>
+                            <button type="button" @click.stop="openAddGroupModal()" class="text-[11px] font-bold text-slate-900 hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-plus text-[10px]"></i> 追加
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+                            <template x-for="g in groupList" :key="g">
+                                <button type="button" @click="photoForm.group = g" 
+                                    :class="photoForm.group === g ? 'bg-slate-900 text-white font-bold' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                                    class="px-3.5 py-1.5 rounded-xl text-xs transition whitespace-nowrap" x-text="g">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 1. 写真画像 -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider">写真画像</label>
+                        <div class="flex items-center gap-4">
+                            <div class="w-20 h-24 bg-slate-50 border border-slate-200/60 rounded-2xl overflow-hidden flex items-center justify-center shrink-0">
+                                <template x-if="photoForm.image">
+                                    <img :src="photoForm.image" class="w-full h-full object-cover">
+                                </template>
+                                <template x-if="!photoForm.image">
+                                    <i class="fa-regular fa-image text-slate-300 text-xl"></i>
+                                </template>
+                            </div>
+                            <div class="flex-1 space-y-2">
+                                <label class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition">
+                                    <i class="fa-solid fa-camera"></i>
+                                    <span x-text="photoForm.image ? '画像を変更' : '画像を選択/撮影'"></span>
+                                    <input type="file" @change="handleImageUpload($event, 'photo')" accept="image/*" class="hidden">
+                                </label>
+                                <template x-if="photoForm.image">
+                                    <div><button type="button" @click="photoForm.image = ''" class="text-[11px] text-rose-500 font-bold hover:underline">画像を削除</button></div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. シリーズ名 -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">シリーズ名 <span class="text-rose-500">*</span></label>
+                        <input type="text" x-model="photoForm.series" @input="onSeriesInputChange()" list="photo-series-list" required 
+                            placeholder="例: アルバム「+Alpha」MV&ジャケ写オフショット" 
+                            class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
+                        <datalist id="photo-series-list">
+                            <template x-for="name in existingPhotoSeriesNames" :key="name"><option :value="name"></option></template>
+                        </datalist>
+                    </div>
+
+                    <!-- 3. 通し番号 / 所持枚数 / 単価 -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">通し番号 <span class="text-rose-500">*</span></label>
+                            <input type="text" x-model="photoForm.code" @input="onCodeInputChange()" required placeholder="例: ND24-120" 
+                                class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">所持枚数</label>
+                            <input type="number" min="0" x-model.number="photoForm.count" required 
+                                class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">単価(円)</label>
+                            <input type="number" min="0" x-model.number="photoForm.price" required 
+                                class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
+                        </div>
+                    </div>
+
+                    <!-- 4. 区分 -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">区分</label>
+                        <div class="flex items-center gap-2">
+                            <button type="button" @click="photoForm.era = 'Debut'" 
+                                :class="photoForm.era === 'Debut' ? 'bg-slate-900 text-white font-bold' : 'bg-slate-50 text-slate-600'"
+                                class="px-4 py-2 rounded-xl text-xs transition">
+                                デビュー後
+                            </button>
+                            <button type="button" @click="photoForm.era = 'Jr'" 
+                                :class="photoForm.era === 'Jr' ? 'bg-blue-600 text-white font-bold' : 'bg-slate-50 text-slate-600'"
+                                class="px-4 py-2 rounded-xl text-xs transition">
+                                デビュー前
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 5. 写っているメンバー・ペア (#タグ) -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">写っているメンバー・ペア (#タグ)</label>
+                        <div class="flex flex-wrap items-center gap-1.5 mb-2">
+                            <template x-for="(tag, idx) in photoForm.tags" :key="idx">
+                                <span class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1 rounded-xl flex items-center gap-1.5">
+                                    #<span x-text="tag"></span>
+                                    <button type="button" @click="removeTagFromPhoto(idx)" class="text-slate-400 hover:text-slate-700 text-xs"><i class="fa-solid fa-xmark"></i></button>
+                                </span>
+                            </template>
+                        </div>
+
+                        <input type="text" x-model="tagInput" @keydown.enter.prevent.stop="addTagToPhoto()" placeholder="例: 道枝駿佑 や みちなが (Enterで確定)" 
+                            class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 mb-2">
+
+                        <template x-if="allExistingTags.length > 0">
+                            <div class="space-y-1">
+                                <span class="text-[10px] text-slate-400 font-bold">よく使うタグ:</span>
+                                <div class="flex flex-wrap gap-1 max-h-20 overflow-y-auto hide-scrollbar">
+                                    <template x-for="candidate in allExistingTags" :key="candidate">
+                                        <button type="button" @click="selectCandidateTag(candidate)" 
+                                            :class="photoForm.tags.includes(candidate) ? 'bg-slate-900 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                            class="text-[10px] px-2 py-0.5 rounded-md transition">
+                                            #<span x-text="candidate"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+                        <button type="button" @click="showAddPhotoModal = false" class="px-5 py-2.5 text-xs font-bold text-slate-400 hover:bg-slate-50 rounded-xl">キャンセル</button>
+                        <button type="submit" class="px-6 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md">
+                            <span x-text="isEditingPhoto ? '更新する' : '登録する'"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 【写真詳細モーダル】 -->
+        <div x-show="showPhotoDetailModal" class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition.opacity>
+            <template x-if="selectedPhoto">
+                <div @click.outside="showPhotoDetailModal = false" class="bg-white rounded-4xl shadow-2xl border border-slate-100 w-full max-w-sm overflow-hidden flex flex-col">
+                    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                        <span class="font-mono font-bold text-slate-800 text-xs px-2" x-text="selectedPhoto.code"></span>
+                        <button @click="showPhotoDetailModal = false" class="text-slate-400 hover:text-slate-900 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+                    </div>
+
+                    <div class="bg-slate-50 h-64 flex items-center justify-center overflow-hidden relative border-b border-slate-100 p-3">
+                        <template x-if="selectedPhoto.image">
+                            <img :src="selectedPhoto.image" class="w-full h-full object-contain rounded-2xl shadow-xs">
+                        </template>
+                        <template x-if="!selectedPhoto.image">
+                            <div class="text-slate-300 text-center flex flex-col items-center justify-center">
+                                <i class="fa-regular fa-image text-5xl mb-2"></i>
+                                <p class="text-xs font-bold text-slate-400">画像が未登録です</p>
+                            </div>
+                        </template>
+
+                        <!-- 画像変更・登録・削除ボタン群 -->
+                        <div class="absolute bottom-3 flex items-center gap-2">
+                            <label class="bg-white/90 hover:bg-slate-900 hover:text-white text-slate-800 border border-slate-200 text-xs font-bold px-4 py-1.5 rounded-full backdrop-blur-md cursor-pointer transition shadow-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-camera"></i>
+                                <span x-text="selectedPhoto.image ? '画像を変更' : '画像を登録'"></span>
+                                <input type="file" @change="changeDetailPhotoImage($event)" accept="image/*" class="hidden">
+                            </label>
+
+                            <template x-if="selectedPhoto.image">
+                                <button type="button" @click="removePhotoDetailImage()" class="bg-white/90 hover:bg-rose-500 hover:text-white text-rose-500 border border-rose-200 text-xs font-bold w-8 h-8 rounded-full backdrop-blur-md transition shadow-sm flex items-center justify-center" title="登録した画像を削除">
+                                    <i class="fa-regular fa-trash-can"></i>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="p-5 space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">シリーズ名</label>
+                            <input type="text" x-model="selectedPhoto.series" list="photo-series-list-detail" @change="updateDetailPhoto()" 
+                                class="w-full px-3.5 py-2 bg-slate-50 border-0 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                            <datalist id="photo-series-list-detail">
+                                <template x-for="name in existingPhotoSeriesNames" :key="name"><option :value="name"></option></template>
+                            </datalist>
+                        </div>
+
+                        <template x-if="selectedPhoto.tags && selectedPhoto.tags.length > 0">
+                            <div class="flex flex-wrap gap-1">
+                                <template x-for="tag in selectedPhoto.tags" :key="tag">
+                                    <span class="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-lg">
+                                        #<span x-text="tag"></span>
+                                    </span>
+                                </template>
+                            </div>
+                        </template>
+
+                        <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl">
+                            <span class="text-xs font-bold text-slate-500">所持枚数</span>
+                            <div class="flex items-center gap-3">
+                                <button @click="updatePhotoCount(selectedPhoto.id, -1)" class="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-800 font-bold shadow-2xs hover:bg-slate-100">
+                                    <i class="fa-solid fa-minus"></i>
+                                </button>
+                                <span class="text-base font-bold text-slate-900 min-w-[2rem] text-center" x-text="selectedPhoto.count"></span>
+                                <button @click="updatePhotoCount(selectedPhoto.id, 1)" class="w-8 h-8 bg-slate-900 text-white rounded-xl flex items-center justify-center font-bold shadow-2xs hover:bg-slate-800">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 flex items-center justify-between gap-2 border-t border-slate-100">
+                            <button @click="openDeleteConfirmModal('photo', selectedPhoto.id)" class="flex-1 bg-rose-50 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-100 py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5">
+                                <i class="fa-regular fa-trash-can"></i> 削除
+                            </button>
+                            <button @click="openEditPhotoModal(selectedPhoto)" class="px-5 bg-slate-100 hover:bg-slate-200 text-slate-800 py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1">
+                                <i class="fa-regular fa-pen-to-square"></i> 編集
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- 【グッズ追加/編集モーダル】 -->
+        <div x-show="showAddGoodsModal" class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition.opacity>
+            <div @click.outside="showAddGoodsModal = false" class="bg-white rounded-4xl shadow-2xl border border-slate-100 w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+                <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-extrabold text-slate-900 text-base" x-text="isEditingGoods ? 'グッズの編集' : 'グッズを新規追加'"></h3>
+                    <button @click="showAddGoodsModal = false" class="text-slate-400 hover:text-slate-900 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+
+                <form @submit.prevent="saveGoods()" class="p-6 overflow-y-auto space-y-5 flex-1">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">グループを選択</label>
+                            <button type="button" @click.stop="openAddGroupModal()" class="text-[11px] font-bold text-slate-900 hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-plus text-[10px]"></i> 追加
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+                            <template x-for="g in groupList" :key="g">
+                                <button type="button" @click="goodsForm.group = g" 
+                                    :class="goodsForm.group === g ? 'bg-slate-900 text-white font-bold' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                                    class="px-3.5 py-1.5 rounded-xl text-xs transition whitespace-nowrap" x-text="g">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider">グッズ画像</label>
+                        <div class="flex items-center gap-4">
+                            <div class="w-20 h-20 bg-slate-50 border border-slate-200/60 rounded-2xl overflow-hidden flex items-center justify-center shrink-0">
+                                <template x-if="goodsForm.image">
+                                    <img :src="goodsForm.image" class="w-full h-full object-contain p-1">
+                                </template>
+                                <template x-if="!goodsForm.image">
+                                    <i class="fa-solid fa-icons text-slate-300 text-xl"></i>
+                                </template>
+                            </div>
+                            <div class="flex-1 space-y-2">
+                                <label class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition">
+                                    <i class="fa-solid fa-camera"></i>
+                                    <span x-text="goodsForm.image ? '画像を変更' : '画像を選択/撮影'"></span>
+                                    <input type="file" @change="handleImageUpload($event, 'goods')" accept="image/*" class="hidden">
+                                </label>
+                                <template x-if="goodsForm.image">
+                                    <div><button type="button" @click="goodsForm.image = ''" class="text-[11px] text-rose-500 font-bold hover:underline">画像を削除</button></div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">シリーズ・ツアー名 <span class="text-rose-500">*</span></label>
+                        <input type="text" x-model="goodsForm.series" list="goods-series-list" required 
+                            placeholder="例: LIVE TOUR 2026 ND5" 
+                            class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
+                        <datalist id="goods-series-list">
+                            <template x-for="name in existingGoodsSeriesNames" :key="name"><option :value="name"></option></template>
+                        </datalist>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">グッズ名 <span class="text-rose-500">*</span></label>
+                            <input type="text" x-model="goodsForm.title" required placeholder="例: アクリルスタンド (道枝駿佑)" 
+                                class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">所持数</label>
+                            <input type="number" min="0" x-model.number="goodsForm.count" required 
+                                class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
+                        </div>
+                    </div>
+
+                    <div class="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+                        <button type="button" @click="showAddGoodsModal = false" class="px-5 py-2.5 text-xs font-bold text-slate-400 hover:bg-slate-50 rounded-xl">キャンセル</button>
+                        <button type="submit" class="px-6 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md">
+                            <span x-text="isEditingGoods ? '更新する' : '登録する'"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 【グッズ詳細モーダル】 -->
+        <div x-show="showGoodsDetailModal" class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition.opacity>
+            <template x-if="selectedGoods">
+                <div @click.outside="showGoodsDetailModal = false" class="bg-white rounded-4xl shadow-2xl border border-slate-100 w-full max-w-sm overflow-hidden flex flex-col">
+                    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                        <span class="font-bold text-slate-800 text-xs px-2 truncate" x-text="selectedGoods.title"></span>
+                        <button @click="showGoodsDetailModal = false" class="text-slate-400 hover:text-slate-900 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+                    </div>
+
+                    <div class="bg-slate-50 h-64 flex items-center justify-center overflow-hidden relative border-b border-slate-100 p-3">
+                        <template x-if="selectedGoods.image">
+                            <img :src="selectedGoods.image" class="w-full h-full object-contain rounded-2xl shadow-xs">
+                        </template>
+                        <template x-if="!selectedGoods.image">
+                            <div class="text-slate-300 text-center flex flex-col items-center justify-center">
+                                <i class="fa-solid fa-icons text-4xl mb-2"></i>
+                                <p class="text-xs font-bold text-slate-400">画像が未登録です</p>
+                            </div>
+                        </template>
+
+                        <!-- 画像変更・登録・削除ボタン群 -->
+                        <div class="absolute bottom-3 flex items-center gap-2">
+                            <label class="bg-white/90 hover:bg-slate-900 hover:text-white text-slate-800 border border-slate-200 text-xs font-bold px-4 py-1.5 rounded-full backdrop-blur-md cursor-pointer transition shadow-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-camera"></i>
+                                <span x-text="selectedGoods.image ? '画像を変更' : '画像を登録'"></span>
+                                <input type="file" @change="changeDetailGoodsImage($event)" accept="image/*" class="hidden">
+                            </label>
+
+                            <template x-if="selectedGoods.image">
+                                <button type="button" @click="removeGoodsDetailImage()" class="bg-white/90 hover:bg-rose-500 hover:text-white text-rose-500 border border-rose-200 text-xs font-bold w-8 h-8 rounded-full backdrop-blur-md transition shadow-sm flex items-center justify-center" title="登録した画像を削除">
+                                    <i class="fa-regular fa-trash-can"></i>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="p-5 space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">シリーズ・ツアー名</label>
+                            <input type="text" x-model="selectedGoods.series" list="goods-series-list-detail" @change="updateDetailGoods()" 
+                                class="w-full px-3.5 py-2 bg-slate-50 border-0 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                            <datalist id="goods-series-list-detail">
+                                <template x-for="name in existingGoodsSeriesNames" :key="name"><option :value="name"></option></template>
+                            </datalist>
+                        </div>
+
+                        <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl">
+                            <span class="text-xs font-bold text-slate-500">所持数</span>
+                            <div class="flex items-center gap-3">
+                                <button @click="updateGoodsCount(selectedGoods.id, -1)" class="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-800 font-bold shadow-2xs hover:bg-slate-100">
+                                    <i class="fa-solid fa-minus"></i>
+                                </button>
+                                <span class="text-base font-bold text-slate-900 min-w-[2rem] text-center" x-text="selectedGoods.count"></span>
+                                <button @click="updateGoodsCount(selectedGoods.id, 1)" class="w-8 h-8 bg-slate-900 text-white rounded-xl flex items-center justify-center font-bold shadow-2xs hover:bg-slate-800">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 flex items-center justify-between gap-2 border-t border-slate-100">
+                            <button @click="openDeleteConfirmModal('goods', selectedGoods.id)" class="flex-1 bg-rose-50 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-100 py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5">
+                                <i class="fa-regular fa-trash-can"></i> 削除
+                            </button>
+                            <button @click="openEditGoodsModal(selectedGoods)" class="px-5 bg-slate-100 hover:bg-slate-200 text-slate-800 py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1">
+                                <i class="fa-regular fa-pen-to-square"></i> 編集
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+    </div>
+
+    <!-- JavaScriptロジック -->
+    <script>
+        const firebaseConfig = {
+  apiKey: "AIzaSyD9sGxB6cLbEZgZjiJpCdKYB_XNjjSg0HQ",
+  authDomain: "jshop-app.firebaseapp.com",
+  projectId: "jshop-app",
+  storageBucket: "jshop-app.firebasestorage.app",
+  messagingSenderId: "612723915412",
+  appId: "1:612723915412:web:0618e206a077141a745281",
+  measurementId: "G-XPJKYZM66N"
+};
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        function photoApp() {
+            return {
+                isLoggedIn: false,
+                isAuthLogin: true,
+                authEmail: '',
+                authPassword: '',
+                authError: '',
+
+                currentTab: 'photos',
+                searchQuery: '',
+                selectedGroupFilter: 'ALL',
+                selectedTagFilter: '',
+                groupList: ['なにわ男子', 'HiHi Jets', '少年忍者', '7 MEN 侍', '美 少年', 'その他'],
+
+                photos: [],
+                goods: [],
+                seriesMemory: {},
+
+                showAddPhotoModal: false,
+                showPhotoDetailModal: false,
+                showAddGoodsModal: false,
+                showGoodsDetailModal: false,
+                showAddGroupModal: false,
+                showGroupDeleteModal: false,
+                showItemDeleteModal: false,
+                showSettings: false,
+
+                itemToDeleteType: '',
+                itemToDeleteId: null,
+
+                newGroupNameInput: '',
+                deletingGroupName: '',
+                tagInput: '',
+
+                isEditingPhoto: false,
+                selectedPhoto: null,
+                isEditingGoods: false,
+                selectedGoods: null,
+
+                groupTimer: null,
+                isGroupLongPressed: false,
+
+                photoForm: { id: null, group: 'なにわ男子', series: '', era: 'Debut', code: '', count: 1, price: 180, image: '', tags: [] },
+                goodsForm: { id: null, group: 'なにわ男子', series: '', title: '', count: 1, image: '' },
+
+                cleanString(str) {
+                    if (!str) return '';
+                    return str.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim();
+                },
+
+                initApp() {
+                    auth.onAuthStateChanged((user) => {
+                        if (user) {
+                            this.isLoggedIn = true;
+                            this.loadUserData();
+                        } else {
+                            this.isLoggedIn = false;
+                        }
+                    });
+                },
+
+                handleAuth() {
+                    this.authError = '';
+                    if (!this.authEmail || !this.authPassword) {
+                        this.authError = 'メールアドレスとパスワードを入力してください。';
+                        return;
+                    }
+                    const promise = this.isAuthLogin ? 
+                        auth.signInWithEmailAndPassword(this.authEmail, this.authPassword) : 
+                        auth.createUserWithEmailAndPassword(this.authEmail, this.authPassword);
+
+                    promise.catch((err) => {
+                        this.authError = '認証エラーが発生しました。';
+                        console.error(err);
+                    });
+                },
+
+                handleLogout() {
+                    auth.signOut();
+                    this.showSettings = false;
+                },
+
+                loadUserData() {
+                    const savedGroups = localStorage.getItem('my_group_list');
+                    if (savedGroups) {
+                        try { this.groupList = JSON.parse(savedGroups); } catch(e) {}
+                    }
+
+                    const savedPhotos = localStorage.getItem('my_photo_collection');
+                    if (savedPhotos) {
+                        try {
+                            this.photos = JSON.parse(savedPhotos).map(p => ({
+                                ...p,
+                                series: this.cleanString(p.series),
+                                code: this.cleanString(p.code),
+                                era: p.era || 'Debut',
+                                group: p.group || 'なにわ男子',
+                                tags: p.tags || []
+                            }));
+                        } catch(e) {}
+                    }
+                    const savedGoods = localStorage.getItem('my_goods_collection');
+                    if (savedGoods) {
+                        try {
+                            this.goods = JSON.parse(savedGoods).map(g => ({
+                                ...g,
+                                series: this.cleanString(g.series),
+                                title: this.cleanString(g.title),
+                                group: g.group || 'なにわ男子'
+                            }));
+                        } catch(e) {}
+                    }
+                    const savedMemory = localStorage.getItem('my_series_memory');
+                    if (savedMemory) {
+                        try { this.seriesMemory = JSON.parse(savedMemory); } catch(e) {}
+                    }
+
+                    this.$nextTick(() => { this.initSortable(); });
+                },
+
+                initSortable() {
+                    const container = this.$refs.sortableGroupContainer;
+                    if (!container) return;
+
+                    Sortable.create(container, {
+                        animation: 250,
+                        ghostClass: 'sortable-ghost',
+                        dragClass: 'sortable-drag',
+                        delay: 200,
+                        delayOnTouchOnly: true,
+                        onEnd: (evt) => {
+                            const newOrder = [];
+                            container.querySelectorAll('.group-tab-item').forEach(el => {
+                                newOrder.push(el.getAttribute('data-group'));
+                            });
+                            this.groupList = newOrder;
+                            this.saveGroupsToStorage();
+                        }
+                    });
+                },
+
+                onGroupPointerDown(e, groupName) {
+                    this.isGroupLongPressed = false;
+                    clearTimeout(this.groupTimer);
+                    this.groupTimer = setTimeout(() => {
+                        this.isGroupLongPressed = true;
+                        if (navigator.vibrate) navigator.vibrate(50);
+                        this.deletingGroupName = groupName;
+                        this.showGroupDeleteModal = true;
+                    }, 500);
+                },
+
+                onGroupPointerUp(e, groupName) {
+                    clearTimeout(this.groupTimer);
+                    if (!this.isGroupLongPressed && !this.showGroupDeleteModal) {
+                        this.selectedGroupFilter = groupName;
+                    }
+                },
+
+                confirmDeleteGroup() {
+                    if (this.deletingGroupName) {
+                        this.groupList = this.groupList.filter(g => g !== this.deletingGroupName);
+                        this.saveGroupsToStorage();
+                        if (this.selectedGroupFilter === this.deletingGroupName) {
+                            this.selectedGroupFilter = 'ALL';
+                        }
+                        this.deletingGroupName = '';
+                        this.showGroupDeleteModal = false;
+                    }
+                },
+
+                openAddGroupModal() {
+                    this.newGroupNameInput = '';
+                    this.showAddGroupModal = true;
+                },
+
+                confirmAddGroup() {
+                    if (this.newGroupNameInput && this.newGroupNameInput.trim()) {
+                        const cleanName = this.newGroupNameInput.trim();
+                        if (!this.groupList.includes(cleanName)) {
+                            this.groupList.push(cleanName);
+                            this.saveGroupsToStorage();
+                        }
+                        if (this.showAddPhotoModal) this.photoForm.group = cleanName;
+                        if (this.showAddGoodsModal) this.goodsForm.group = cleanName;
+                        this.newGroupNameInput = '';
+                        this.showAddGroupModal = false;
+                    }
+                },
+
+                addTagToPhoto() {
+                    if (!this.tagInput) return;
+                    let cleanTag = this.tagInput.trim().replace(/^#/, '');
+                    if (cleanTag && !this.photoForm.tags.includes(cleanTag)) {
+                        this.photoForm.tags.push(cleanTag);
+                    }
+                    this.tagInput = '';
+                },
+
+                selectCandidateTag(tag) {
+                    if (!this.photoForm.tags.includes(tag)) {
+                        this.photoForm.tags.push(tag);
+                    } else {
+                        this.photoForm.tags = this.photoForm.tags.filter(t => t !== tag);
+                    }
+                },
+
+                removeTagFromPhoto(index) {
+                    this.photoForm.tags.splice(index, 1);
+                },
+
+                get allExistingTags() {
+                    const tagSet = new Set();
+                    this.photos.forEach(p => {
+                        if (p.tags && Array.isArray(p.tags)) {
+                            p.tags.forEach(t => tagSet.add(t));
+                        }
+                    });
+                    return [...tagSet];
+                },
+
+                saveGroupsToStorage() { localStorage.setItem('my_group_list', JSON.stringify(this.groupList)); },
+                savePhotosToStorage() { localStorage.setItem('my_photo_collection', JSON.stringify(this.photos)); },
+                saveGoodsToStorage() { localStorage.setItem('my_goods_collection', JSON.stringify(this.goods)); },
+                saveMemoryToStorage() { localStorage.setItem('my_series_memory', JSON.stringify(this.seriesMemory)); },
+
+                onSeriesInputChange() {
+                    const cleanName = this.cleanString(this.photoForm.series);
+                    if (this.seriesMemory[cleanName]) {
+                        this.photoForm.era = this.seriesMemory[cleanName].era || 'Debut';
+                        if (this.seriesMemory[cleanName].group) {
+                            this.photoForm.group = this.seriesMemory[cleanName].group;
+                        }
+                    }
+                },
+
+                onCodeInputChange() {
+                    const code = this.cleanString(this.photoForm.code);
+                    const yearMatch = code.match(/([0-9]{2})/);
+                    if (yearMatch) {
+                        const yy = parseInt(yearMatch[1], 10);
+                        this.photoForm.price = (yy < 22) ? 160 : 180;
+                    }
+                },
+
+                getYearFromPhoto(item) {
+                    const code = this.cleanString(item.code);
+                    const m = code.match(/([0-9]{2})/);
+                    if (m) {
+                        const yy = parseInt(m[1], 10);
+                        return yy < 50 ? 2000 + yy : 1900 + yy;
+                    }
+                    return 2026;
+                },
+
+                get totalPhotosCount() { return this.photos.length; },
+                get totalCardsCount() { return this.photos.reduce((sum, p) => sum + (Number(p.count) || 0), 0); },
+                get totalPhotosPrice() { return this.photos.reduce((sum, p) => sum + ((Number(p.count) || 0) * (Number(p.price) || 180)), 0); },
+                get existingPhotoSeriesNames() { return [...new Set(this.photos.map(p => p.series))]; },
+
+                get totalGoodsCount() { return this.goods.length; },
+                get totalGoodsItems() { return this.goods.reduce((sum, g) => sum + (Number(g.count) || 0), 0); },
+                get existingGoodsSeriesNames() { return [...new Set(this.goods.map(g => g.series))]; },
+
+                get filteredPhotoSeriesList() {
+                    const q = this.searchQuery.toLowerCase().trim();
+                    const groupFilter = this.selectedGroupFilter;
+                    const tagFilter = this.selectedTagFilter;
+
+                    const filtered = this.photos.filter(p => {
+                        const matchesGroup = (groupFilter === 'ALL' || p.group === groupFilter);
+                        const matchesSearch = !q || p.series.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+                        const matchesTag = !tagFilter || (p.tags && p.tags.includes(tagFilter));
+                        return matchesGroup && matchesSearch && matchesTag;
+                    });
+
+                    const groups = {};
+                    filtered.forEach(item => {
+                        const cleanSeries = this.cleanString(item.series);
+                        if (!groups[cleanSeries]) {
+                            groups[cleanSeries] = {
+                                name: cleanSeries,
+                                era: item.era || 'Debut',
+                                items: [],
+                                latestYear: 0
+                            };
+                        }
+                        groups[cleanSeries].items.push(item);
+                        const y = this.getYearFromPhoto(item);
+                        if (y > groups[cleanSeries].latestYear) {
+                            groups[cleanSeries].latestYear = y;
+                        }
+                    });
+
+                    return Object.values(groups).sort((a, b) => b.latestYear - a.latestYear);
+                },
+
+                getSeriesTotalCount(name) { return this.photos.filter(p => this.cleanString(p.series) === name).reduce((sum, p) => sum + (Number(p.count) || 0), 0); },
+                getSeriesTotalPrice(name) { return this.photos.filter(p => this.cleanString(p.series) === name).reduce((sum, p) => sum + ((Number(p.count) || 0) * (Number(p.price) || 180)), 0); },
+
+                get filteredGoodsSeriesList() {
+                    const q = this.searchQuery.toLowerCase().trim();
+                    const groupFilter = this.selectedGroupFilter;
+
+                    const filtered = this.goods.filter(g => {
+                        const matchesGroup = (groupFilter === 'ALL' || g.group === groupFilter);
+                        const matchesSearch = !q || g.series.toLowerCase().includes(q) || g.title.toLowerCase().includes(q);
+                        return matchesGroup && matchesSearch;
+                    });
+
+                    const groups = {};
+                    filtered.forEach(item => {
+                        const cleanSeries = this.cleanString(item.series);
+                        if (!groups[cleanSeries]) groups[cleanSeries] = [];
+                        groups[cleanSeries].push(item);
+                    });
+                    return Object.keys(groups).map(name => ({ name, items: groups[name] }));
+                },
+
+                getGoodsSeriesTotalItems(name) { return this.goods.filter(g => this.cleanString(g.series) === name).reduce((sum, g) => sum + (Number(g.count) || 0), 0); },
+
+                updatePhotoCount(id, delta) {
+                    const item = this.photos.find(p => p.id === id);
+                    if (item) {
+                        item.count = Math.max(0, (Number(item.count) || 0) + delta);
+                        this.savePhotosToStorage();
+                        if (this.selectedPhoto && this.selectedPhoto.id === id) this.selectedPhoto.count = item.count;
+                    }
+                },
+
+                updateDetailPhoto() {
+                    if (!this.selectedPhoto) return;
+                    const item = this.photos.find(p => p.id === this.selectedPhoto.id);
+                    if (item) {
+                        item.series = this.cleanString(this.selectedPhoto.series);
+                        this.savePhotosToStorage();
+                    }
+                },
+
+                updateGoodsCount(id, delta) {
+                    const item = this.goods.find(g => g.id === id);
+                    if (item) {
+                        item.count = Math.max(0, (Number(item.count) || 0) + delta);
+                        this.saveGoodsToStorage();
+                        if (this.selectedGoods && this.selectedGoods.id === id) this.selectedGoods.count = item.count;
+                    }
+                },
+
+                updateDetailGoods() {
+                    if (!this.selectedGoods) return;
+                    const item = this.goods.find(g => g.id === this.selectedGoods.id);
+                    if (item) {
+                        item.series = this.cleanString(this.selectedGoods.series);
+                        this.saveGoodsToStorage();
+                    }
+                },
+
+                handleImageUpload(event, type) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            let width = img.width, height = img.height;
+                            const maxDim = 800;
+                            if (width > height && width > maxDim) { height = Math.round((height * maxDim) / width); width = maxDim; }
+                            else if (height > maxDim) { width = Math.round((width * maxDim) / height); height = maxDim; }
+                            canvas.width = width; canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+                            if (type === 'photo') this.photoForm.image = dataUrl;
+                            if (type === 'goods') this.goodsForm.image = dataUrl;
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                changeDetailPhotoImage(event) {
+                    const file = event.target.files[0];
+                    if (!file || !this.selectedPhoto) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            let width = img.width, height = img.height, maxDim = 800;
+                            if (width > height && width > maxDim) { height = Math.round((height * maxDim) / width); width = maxDim; }
+                            else if (height > maxDim) { width = Math.round((width * maxDim) / height); height = maxDim; }
+                            canvas.width = width; canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            const imageData = canvas.toDataURL('image/jpeg', 0.75);
+                            this.selectedPhoto.image = imageData;
+                            const item = this.photos.find(p => p.id === this.selectedPhoto.id);
+                            if (item) item.image = imageData;
+                            this.savePhotosToStorage();
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                removePhotoDetailImage() {
+                    if (!this.selectedPhoto) return;
+                    this.selectedPhoto.image = '';
+                    const item = this.photos.find(p => p.id === this.selectedPhoto.id);
+                    if (item) item.image = '';
+                    this.savePhotosToStorage();
+                },
+
+                changeDetailGoodsImage(event) {
+                    const file = event.target.files[0];
+                    if (!file || !this.selectedGoods) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            let width = img.width, height = img.height, maxDim = 800;
+                            if (width > height && width > maxDim) { height = Math.round((height * maxDim) / width); width = maxDim; }
+                            else if (height > maxDim) { width = Math.round((width * maxDim) / height); height = maxDim; }
+                            canvas.width = width; canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            const imageData = canvas.toDataURL('image/jpeg', 0.75);
+                            this.selectedGoods.image = imageData;
+                            const item = this.goods.find(g => g.id === this.selectedGoods.id);
+                            if (item) item.image = imageData;
+                            this.saveGoodsToStorage();
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                removeGoodsDetailImage() {
+                    if (!this.selectedGoods) return;
+                    this.selectedGoods.image = '';
+                    const item = this.goods.find(g => g.id === this.selectedGoods.id);
+                    if (item) item.image = '';
+                    this.saveGoodsToStorage();
+                },
+
+                openAddPhotoModal() {
+                    this.isEditingPhoto = false;
+                    const defaultGroup = this.selectedGroupFilter !== 'ALL' ? this.selectedGroupFilter : (this.groupList[0] || 'なにわ男子');
+                    this.photoForm = { id: null, group: defaultGroup, series: this.existingPhotoSeriesNames[0] || '', era: 'Debut', code: '', count: 1, price: 180, image: '', tags: [] };
+                    this.tagInput = '';
+                    this.showAddPhotoModal = true;
+                },
+                openEditPhotoModal(item) {
+                    this.isEditingPhoto = true;
+                    this.photoForm = { ...item, tags: item.tags ? [...item.tags] : [] };
+                    this.tagInput = '';
+                    this.showPhotoDetailModal = false;
+                    this.showAddPhotoModal = true;
+                },
+                openPhotoDetailModal(item) { this.selectedPhoto = item; this.showPhotoDetailModal = true; },
+                
+                savePhoto() {
+                    if (!this.photoForm.series || !this.photoForm.code) return;
+                    this.photoForm.series = this.cleanString(this.photoForm.series);
+                    this.photoForm.code = this.cleanString(this.photoForm.code);
+
+                    this.seriesMemory[this.photoForm.series] = {
+                        era: this.photoForm.era,
+                        group: this.photoForm.group
+                    };
+                    this.saveMemoryToStorage();
+
+                    if (this.isEditingPhoto) {
+                        const idx = this.photos.findIndex(p => p.id === this.photoForm.id);
+                        if (idx !== -1) this.photos[idx] = { ...this.photoForm };
+                    } else {
+                        this.photos.unshift({ ...this.photoForm, id: Date.now().toString() });
+                    }
+                    this.savePhotosToStorage();
+                    this.showAddPhotoModal = false;
+                },
+
+                openDeleteConfirmModal(type, id) {
+                    this.itemToDeleteType = type;
+                    this.itemToDeleteId = id;
+                    this.showItemDeleteModal = true;
+                },
+
+                confirmExecuteDelete() {
+                    if (this.itemToDeleteType === 'photo') {
+                        this.photos = this.photos.filter(p => p.id !== this.itemToDeleteId);
+                        this.savePhotosToStorage();
+                        this.showPhotoDetailModal = false;
+                    } else if (this.itemToDeleteType === 'goods') {
+                        this.goods = this.goods.filter(g => g.id !== this.itemToDeleteId);
+                        this.saveGoodsToStorage();
+                        this.showGoodsDetailModal = false;
+                    }
+                    this.showItemDeleteModal = false;
+                    this.itemToDeleteType = '';
+                    this.itemToDeleteId = null;
+                },
+
+                openAddGoodsModal() {
+                    this.isEditingGoods = false;
+                    const defaultGroup = this.selectedGroupFilter !== 'ALL' ? this.selectedGroupFilter : (this.groupList[0] || 'なにわ男子');
+                    this.goodsForm = { id: null, group: defaultGroup, series: this.existingGoodsSeriesNames[0] || '', title: '', count: 1, image: '' };
+                    this.showAddGoodsModal = true;
+                },
+                openEditGoodsModal(item) {
+                    this.isEditingGoods = true;
+                    this.goodsForm = { ...item };
+                    this.showGoodsDetailModal = false;
+                    this.showAddGoodsModal = true;
+                },
+                openGoodsDetailModal(item) { this.selectedGoods = item; this.showGoodsDetailModal = true; },
+                
+                saveGoods() {
+                    if (!this.goodsForm.series || !this.goodsForm.title) return;
+                    this.goodsForm.series = this.cleanString(this.goodsForm.series);
+                    this.goodsForm.title = this.cleanString(this.goodsForm.title);
+
+                    if (this.isEditingGoods) {
+                        const idx = this.goods.findIndex(g => g.id === this.goodsForm.id);
+                        if (idx !== -1) this.goods[idx] = { ...this.goodsForm };
+                    } else {
+                        this.goods.unshift({ ...this.goodsForm, id: Date.now().toString() });
+                    }
+                    this.saveGoodsToStorage();
+                    this.showAddGoodsModal = false;
+                },
+
+                exportData() {
+                    const data = { photos: this.photos, goods: this.goods, seriesMemory: this.seriesMemory, groupList: this.groupList };
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+                    const a = document.createElement('a');
+                    a.setAttribute("href", dataStr);
+                    a.setAttribute("download", `johnnys_collection_${new Date().toISOString().slice(0,10)}.json`);
+                    document.body.appendChild(a); a.click(); a.remove();
+                    this.showSettings = false;
+                },
+                importData(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const imported = JSON.parse(e.target.result);
+                            if (imported.photos) this.photos = imported.photos;
+                            if (imported.goods) this.goods = imported.goods;
+                            if (imported.seriesMemory) this.seriesMemory = imported.seriesMemory;
+                            if (imported.groupList) this.groupList = imported.groupList;
+                            this.savePhotosToStorage();
+                            this.saveGoodsToStorage();
+                            this.saveMemoryToStorage();
+                            this.saveGroupsToStorage();
+                            alert('全データを復元しました！');
+                        } catch(err) { alert('ファイルの読み込みに失敗しました。'); }
+                    };
+                    reader.readAsText(file);
+                    this.showSettings = false;
+                }
+            };
+        }
+    </script>
+</body>
+</html>
