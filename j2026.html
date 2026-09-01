@@ -497,7 +497,6 @@
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">シリーズ名</label>
                         <input type="text" x-model="photoForm.series" @input="onSeriesInputChange()" list="photo-series-list" 
-                            placeholder="例: アルバム「+Alpha」MV&ジャケ写オフショット" 
                             class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
                         <datalist id="photo-series-list">
                             <template x-for="name in existingPhotoSeriesNames" :key="name"><option :value="name"></option></template>
@@ -506,13 +505,13 @@
 
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">発売年月 (任意)</label>
-                            <input type="text" x-model="photoForm.date" placeholder="例: 2024-05" 
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">発売年月</label>
+                            <input type="text" x-model="photoForm.date" placeholder="2024-05" 
                                 class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">通し番号 (任意)</label>
-                            <input type="text" x-model="photoForm.code" @input="onCodeInputChange()" placeholder="例: ND24-120" 
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">通し番号</label>
+                            <input type="text" x-model="photoForm.code" @input="onCodeInputChange()" placeholder="ND24-120" 
                                 class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
                         </div>
                     </div>
@@ -557,7 +556,7 @@
                             </template>
                         </div>
 
-                        <input type="text" x-model="tagInput" @keydown.enter.prevent.stop="addTagToItem('photo')" placeholder="例: 道枝駿佑 や みちなが (Enterで確定)" 
+                        <input type="text" x-model="tagInput" @keydown.enter.prevent.stop="addTagToItem('photo')" placeholder="追加するタグを入力" 
                             class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 mb-2">
 
                         <template x-if="allExistingTags.length > 0">
@@ -720,7 +719,6 @@
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">シリーズ・ツアー名 <span class="text-rose-500">*</span></label>
                         <input type="text" x-model="goodsForm.series" list="goods-series-list" required 
-                            placeholder="例: LIVE TOUR 2026 ND5" 
                             class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
                         <datalist id="goods-series-list">
                             <template x-for="name in existingGoodsSeriesNames" :key="name"><option :value="name"></option></template>
@@ -730,7 +728,7 @@
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">グッズ名 <span class="text-rose-500">*</span></label>
-                            <input type="text" x-model="goodsForm.title" required placeholder="例: アクリルスタンド (道枝駿佑)" 
+                            <input type="text" x-model="goodsForm.title" required 
                                 class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
                         </div>
                         <div>
@@ -741,7 +739,7 @@
                     </div>
 
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">タグ (#アクスタ, #うちわ 等)</label>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">タグ</label>
                         <div class="flex flex-wrap items-center gap-1.5 mb-2">
                             <template x-for="(tag, idx) in goodsForm.tags" :key="idx">
                                 <span class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1 rounded-xl flex items-center gap-1.5">
@@ -751,7 +749,7 @@
                             </template>
                         </div>
 
-                        <input type="text" x-model="goodsTagInput" @keydown.enter.prevent.stop="addTagToItem('goods')" placeholder="例: アクスタ や うちわ (Enterで確定)" 
+                        <input type="text" x-model="goodsTagInput" @keydown.enter.prevent.stop="addTagToItem('goods')" placeholder="追加するタグを入力" 
                             class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 mb-2">
 
                         <template x-if="allExistingTags.length > 0">
