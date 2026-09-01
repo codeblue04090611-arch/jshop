@@ -48,6 +48,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
         [x-cloak] { display: none !important; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -364,7 +365,7 @@
             </button>
         </div>
 
-        <!-- 【アイテム削除確認 モーダル（アプリ風警告画面）】 -->
+        <!-- 【アイテム削除確認 モーダル】 -->
         <div x-show="showItemDeleteModal" class="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition.opacity>
             <div class="bg-white rounded-4xl shadow-2xl border border-slate-100 w-full max-w-sm overflow-hidden p-6 text-center space-y-4">
                 <div class="w-12 h-12 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto text-xl font-bold">
@@ -442,8 +443,6 @@
                 </div>
 
                 <form @submit.prevent="savePhoto()" class="p-6 overflow-y-auto space-y-5 flex-1">
-                    
-                    <!-- 0. グループ選択 -->
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">グループを選択</label>
@@ -461,7 +460,6 @@
                         </div>
                     </div>
 
-                    <!-- 1. 写真画像 -->
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider">写真画像</label>
                         <div class="flex items-center gap-4">
@@ -486,7 +484,6 @@
                         </div>
                     </div>
 
-                    <!-- 2. シリーズ名 -->
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">シリーズ名 <span class="text-rose-500">*</span></label>
                         <input type="text" x-model="photoForm.series" @input="onSeriesInputChange()" list="photo-series-list" required 
@@ -497,7 +494,6 @@
                         </datalist>
                     </div>
 
-                    <!-- 3. 通し番号 / 所持枚数 / 単価 -->
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">通し番号 <span class="text-rose-500">*</span></label>
@@ -516,7 +512,6 @@
                         </div>
                     </div>
 
-                    <!-- 4. 区分 -->
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">区分</label>
                         <div class="flex items-center gap-2">
@@ -533,7 +528,6 @@
                         </div>
                     </div>
 
-                    <!-- 5. 写っているメンバー・ペア (#タグ) -->
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">写っているメンバー・ペア (#タグ)</label>
                         <div class="flex flex-wrap items-center gap-1.5 mb-2">
@@ -594,7 +588,6 @@
                             </div>
                         </template>
 
-                        <!-- 画像変更・登録・削除ボタン群 -->
                         <div class="absolute bottom-3 flex items-center gap-2">
                             <label class="bg-white/90 hover:bg-slate-900 hover:text-white text-slate-800 border border-slate-200 text-xs font-bold px-4 py-1.5 rounded-full backdrop-blur-md cursor-pointer transition shadow-sm flex items-center gap-1.5">
                                 <i class="fa-solid fa-camera"></i>
@@ -759,7 +752,6 @@
                             </div>
                         </template>
 
-                        <!-- 画像変更・登録・削除ボタン群 -->
                         <div class="absolute bottom-3 flex items-center gap-2">
                             <label class="bg-white/90 hover:bg-slate-900 hover:text-white text-slate-800 border border-slate-200 text-xs font-bold px-4 py-1.5 rounded-full backdrop-blur-md cursor-pointer transition shadow-sm flex items-center gap-1.5">
                                 <i class="fa-solid fa-camera"></i>
@@ -816,16 +808,17 @@
     <!-- JavaScriptロジック -->
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyD9sGxB6cLbEZgZjiJpCdKYB_XNjjSg0HQ",
-  authDomain: "jshop-app.firebaseapp.com",
-  projectId: "jshop-app",
-  storageBucket: "jshop-app.firebasestorage.app",
-  messagingSenderId: "612723915412",
-  appId: "1:612723915412:web:0618e206a077141a745281",
-  measurementId: "G-XPJKYZM66N"
-};
+            apiKey: "AIzaSyD9sGxB6cLbEZgZjiJpCdKYB_XNjjSg0HQ",
+            authDomain: "jshop-app.firebaseapp.com",
+            projectId: "jshop-app",
+            storageBucket: "jshop-app.firebasestorage.app",
+            messagingSenderId: "612723915412",
+            appId: "1:612723915412:web:0618e206a077141a745281",
+            measurementId: "G-XPJKYZM66N"
+        };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
+        const db = firebase.firestore();
 
         function photoApp() {
             return {
@@ -834,6 +827,7 @@
                 authEmail: '',
                 authPassword: '',
                 authError: '',
+                currentUser: null,
 
                 currentTab: 'photos',
                 searchQuery: '',
@@ -880,10 +874,15 @@
                 initApp() {
                     auth.onAuthStateChanged((user) => {
                         if (user) {
+                            this.currentUser = user;
                             this.isLoggedIn = true;
                             this.loadUserData();
                         } else {
+                            this.currentUser = null;
                             this.isLoggedIn = false;
+                            this.photos = [];
+                            this.goods = [];
+                            this.seriesMemory = {};
                         }
                     });
                 },
@@ -909,42 +908,56 @@
                     this.showSettings = false;
                 },
 
-                loadUserData() {
-                    const savedGroups = localStorage.getItem('my_group_list');
-                    if (savedGroups) {
-                        try { this.groupList = JSON.parse(savedGroups); } catch(e) {}
-                    }
-
-                    const savedPhotos = localStorage.getItem('my_photo_collection');
-                    if (savedPhotos) {
-                        try {
-                            this.photos = JSON.parse(savedPhotos).map(p => ({
-                                ...p,
-                                series: this.cleanString(p.series),
-                                code: this.cleanString(p.code),
-                                era: p.era || 'Debut',
-                                group: p.group || 'なにわ男子',
-                                tags: p.tags || []
-                            }));
-                        } catch(e) {}
-                    }
-                    const savedGoods = localStorage.getItem('my_goods_collection');
-                    if (savedGoods) {
-                        try {
-                            this.goods = JSON.parse(savedGoods).map(g => ({
-                                ...g,
-                                series: this.cleanString(g.series),
-                                title: this.cleanString(g.title),
-                                group: g.group || 'なにわ男子'
-                            }));
-                        } catch(e) {}
-                    }
-                    const savedMemory = localStorage.getItem('my_series_memory');
-                    if (savedMemory) {
-                        try { this.seriesMemory = JSON.parse(savedMemory); } catch(e) {}
+                async loadUserData() {
+                    if (!this.currentUser) return;
+                    const userDocRef = db.collection('users').doc(this.currentUser.uid);
+                    try {
+                        const doc = await userDocRef.get();
+                        if (doc.exists) {
+                            const data = doc.data();
+                            if (data.groupList) this.groupList = data.groupList;
+                            if (data.photos) {
+                                this.photos = data.photos.map(p => ({
+                                    ...p,
+                                    series: this.cleanString(p.series),
+                                    code: this.cleanString(p.code),
+                                    era: p.era || 'Debut',
+                                    group: p.group || 'なにわ男子',
+                                    tags: p.tags || []
+                                }));
+                            }
+                            if (data.goods) {
+                                this.goods = data.goods.map(g => ({
+                                    ...g,
+                                    series: this.cleanString(g.series),
+                                    title: this.cleanString(g.title),
+                                    group: g.group || 'なにわ男子'
+                                }));
+                            }
+                            if (data.seriesMemory) this.seriesMemory = data.seriesMemory;
+                        } else {
+                            this.saveUserDataToCloud();
+                        }
+                    } catch (e) {
+                        console.error('クラウドデータの取得に失敗しました:', e);
                     }
 
                     this.$nextTick(() => { this.initSortable(); });
+                },
+
+                async saveUserDataToCloud() {
+                    if (!this.currentUser) return;
+                    try {
+                        await db.collection('users').doc(this.currentUser.uid).set({
+                            groupList: this.groupList,
+                            photos: this.photos,
+                            goods: this.goods,
+                            seriesMemory: this.seriesMemory,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    } catch (e) {
+                        console.error('クラウドへのデータ保存に失敗しました:', e);
+                    }
                 },
 
                 initSortable() {
@@ -1048,10 +1061,10 @@
                     return [...tagSet];
                 },
 
-                saveGroupsToStorage() { localStorage.setItem('my_group_list', JSON.stringify(this.groupList)); },
-                savePhotosToStorage() { localStorage.setItem('my_photo_collection', JSON.stringify(this.photos)); },
-                saveGoodsToStorage() { localStorage.setItem('my_goods_collection', JSON.stringify(this.goods)); },
-                saveMemoryToStorage() { localStorage.setItem('my_series_memory', JSON.stringify(this.seriesMemory)); },
+                saveGroupsToStorage() { this.saveUserDataToCloud(); },
+                savePhotosToStorage() { this.saveUserDataToCloud(); },
+                saveGoodsToStorage() { this.saveUserDataToCloud(); },
+                saveMemoryToStorage() { this.saveUserDataToCloud(); },
 
                 onSeriesInputChange() {
                     const cleanName = this.cleanString(this.photoForm.series);
@@ -1301,7 +1314,6 @@
                         era: this.photoForm.era,
                         group: this.photoForm.group
                     };
-                    this.saveMemoryToStorage();
 
                     if (this.isEditingPhoto) {
                         const idx = this.photos.findIndex(p => p.id === this.photoForm.id);
@@ -1383,11 +1395,8 @@
                             if (imported.goods) this.goods = imported.goods;
                             if (imported.seriesMemory) this.seriesMemory = imported.seriesMemory;
                             if (imported.groupList) this.groupList = imported.groupList;
-                            this.savePhotosToStorage();
-                            this.saveGoodsToStorage();
-                            this.saveMemoryToStorage();
-                            this.saveGroupsToStorage();
-                            alert('全データを復元しました！');
+                            this.saveUserDataToCloud();
+                            alert('全データをクラウドへ復元・保存しました！');
                         } catch(err) { alert('ファイルの読み込みに失敗しました。'); }
                     };
                     reader.readAsText(file);
