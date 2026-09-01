@@ -248,7 +248,7 @@
 
                                         <div class="p-3 flex flex-col gap-2">
                                             <div class="flex items-center justify-between">
-                                                <div class="font-mono font-bold text-slate-800 text-xs tracking-wide truncate" x-text="item.code"></div>
+                                                <div class="font-mono font-bold text-slate-800 text-xs tracking-wide truncate" x-text="item.code || ''"></div>
                                                 <div class="text-[10px] font-bold text-slate-400">¥<span x-text="item.price"></span></div>
                                             </div>
                                             
@@ -327,6 +327,16 @@
 
                                         <div class="p-3 flex flex-col gap-2">
                                             <div class="font-bold text-slate-800 text-xs truncate" x-text="item.title"></div>
+
+                                            <template x-if="item.tags && item.tags.length > 0">
+                                                <div class="flex flex-wrap gap-1">
+                                                    <template x-for="tag in item.tags" :key="tag">
+                                                        <button @click.stop="selectedTagFilter = tag" class="bg-slate-100 text-slate-600 text-[9px] font-bold px-1.5 py-0.5 rounded-md hover:bg-slate-200 transition">
+                                                            #<span x-text="tag"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </template>
                                             
                                             <div class="flex items-center justify-between bg-slate-50 rounded-2xl p-1 border border-slate-100">
                                                 <button @click.stop="updateGoodsCount(item.id, -1)" class="w-6 h-6 bg-white text-slate-700 rounded-xl flex items-center justify-center text-xs font-bold shadow-2xs hover:bg-slate-100">
@@ -485,8 +495,8 @@
                     </div>
 
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">シリーズ名 <span class="text-rose-500">*</span></label>
-                        <input type="text" x-model="photoForm.series" @input="onSeriesInputChange()" list="photo-series-list" required 
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">シリーズ名</label>
+                        <input type="text" x-model="photoForm.series" @input="onSeriesInputChange()" list="photo-series-list" 
                             placeholder="例: アルバム「+Alpha」MV&ジャケ写オフショット" 
                             class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
                         <datalist id="photo-series-list">
@@ -494,12 +504,20 @@
                         </datalist>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-3">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">通し番号 <span class="text-rose-500">*</span></label>
-                            <input type="text" x-model="photoForm.code" @input="onCodeInputChange()" required placeholder="例: ND24-120" 
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">発売年月 (任意)</label>
+                            <input type="text" x-model="photoForm.date" placeholder="例: 2024-05" 
+                                class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">通し番号 (任意)</label>
+                            <input type="text" x-model="photoForm.code" @input="onCodeInputChange()" placeholder="例: ND24-120" 
                                 class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
                         </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">所持枚数</label>
                             <input type="number" min="0" x-model.number="photoForm.count" required 
@@ -534,12 +552,12 @@
                             <template x-for="(tag, idx) in photoForm.tags" :key="idx">
                                 <span class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1 rounded-xl flex items-center gap-1.5">
                                     #<span x-text="tag"></span>
-                                    <button type="button" @click="removeTagFromPhoto(idx)" class="text-slate-400 hover:text-slate-700 text-xs"><i class="fa-solid fa-xmark"></i></button>
+                                    <button type="button" @click="removeTagFromItem(idx, 'photo')" class="text-slate-400 hover:text-slate-700 text-xs"><i class="fa-solid fa-xmark"></i></button>
                                 </span>
                             </template>
                         </div>
 
-                        <input type="text" x-model="tagInput" @keydown.enter.prevent.stop="addTagToPhoto()" placeholder="例: 道枝駿佑 や みちなが (Enterで確定)" 
+                        <input type="text" x-model="tagInput" @keydown.enter.prevent.stop="addTagToItem('photo')" placeholder="例: 道枝駿佑 や みちなが (Enterで確定)" 
                             class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 mb-2">
 
                         <template x-if="allExistingTags.length > 0">
@@ -547,7 +565,7 @@
                                 <span class="text-[10px] text-slate-400 font-bold">よく使うタグ:</span>
                                 <div class="flex flex-wrap gap-1 max-h-20 overflow-y-auto hide-scrollbar">
                                     <template x-for="candidate in allExistingTags" :key="candidate">
-                                        <button type="button" @click="selectCandidateTag(candidate)" 
+                                        <button type="button" @click="selectCandidateTag(candidate, 'photo')" 
                                             :class="photoForm.tags.includes(candidate) ? 'bg-slate-900 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                                             class="text-[10px] px-2 py-0.5 rounded-md transition">
                                             #<span x-text="candidate"></span>
@@ -573,7 +591,7 @@
             <template x-if="selectedPhoto">
                 <div @click.outside="showPhotoDetailModal = false" class="bg-white rounded-4xl shadow-2xl border border-slate-100 w-full max-w-sm overflow-hidden flex flex-col">
                     <div class="p-4 border-b border-slate-100 flex items-center justify-between">
-                        <span class="font-mono font-bold text-slate-800 text-xs px-2" x-text="selectedPhoto.code"></span>
+                        <span class="font-mono font-bold text-slate-800 text-xs px-2" x-text="selectedPhoto.code || ''"></span>
                         <button @click="showPhotoDetailModal = false" class="text-slate-400 hover:text-slate-900 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
                     </div>
 
@@ -722,6 +740,36 @@
                         </div>
                     </div>
 
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">タグ (#アクスタ, #うちわ 等)</label>
+                        <div class="flex flex-wrap items-center gap-1.5 mb-2">
+                            <template x-for="(tag, idx) in goodsForm.tags" :key="idx">
+                                <span class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1 rounded-xl flex items-center gap-1.5">
+                                    #<span x-text="tag"></span>
+                                    <button type="button" @click="removeTagFromItem(idx, 'goods')" class="text-slate-400 hover:text-slate-700 text-xs"><i class="fa-solid fa-xmark"></i></button>
+                                </span>
+                            </template>
+                        </div>
+
+                        <input type="text" x-model="goodsTagInput" @keydown.enter.prevent.stop="addTagToItem('goods')" placeholder="例: アクスタ や うちわ (Enterで確定)" 
+                            class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 mb-2">
+
+                        <template x-if="allExistingTags.length > 0">
+                            <div class="space-y-1">
+                                <span class="text-[10px] text-slate-400 font-bold">よく使うタグ:</span>
+                                <div class="flex flex-wrap gap-1 max-h-20 overflow-y-auto hide-scrollbar">
+                                    <template x-for="candidate in allExistingTags" :key="candidate">
+                                        <button type="button" @click="selectCandidateTag(candidate, 'goods')" 
+                                            :class="goodsForm.tags.includes(candidate) ? 'bg-slate-900 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                            class="text-[10px] px-2 py-0.5 rounded-md transition">
+                                            #<span x-text="candidate"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
                     <div class="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
                         <button type="button" @click="showAddGoodsModal = false" class="px-5 py-2.5 text-xs font-bold text-slate-400 hover:bg-slate-50 rounded-xl">キャンセル</button>
                         <button type="submit" class="px-6 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md">
@@ -776,6 +824,16 @@
                                 <template x-for="name in existingGoodsSeriesNames" :key="name"><option :value="name"></option></template>
                             </datalist>
                         </div>
+
+                        <template x-if="selectedGoods.tags && selectedGoods.tags.length > 0">
+                            <div class="flex flex-wrap gap-1">
+                                <template x-for="tag in selectedGoods.tags" :key="tag">
+                                    <span class="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-lg">
+                                        #<span x-text="tag"></span>
+                                    </span>
+                                </template>
+                            </div>
+                        </template>
 
                         <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl">
                             <span class="text-xs font-bold text-slate-500">所持数</span>
@@ -854,6 +912,7 @@
                 newGroupNameInput: '',
                 deletingGroupName: '',
                 tagInput: '',
+                goodsTagInput: '',
 
                 isEditingPhoto: false,
                 selectedPhoto: null,
@@ -863,8 +922,8 @@
                 groupTimer: null,
                 isGroupLongPressed: false,
 
-                photoForm: { id: null, group: 'なにわ男子', series: '', era: 'Debut', code: '', count: 1, price: 180, image: '', tags: [] },
-                goodsForm: { id: null, group: 'なにわ男子', series: '', title: '', count: 1, image: '' },
+                photoForm: { id: null, group: 'なにわ男子', series: '', era: 'Debut', code: '', date: '', count: 1, price: 180, image: '', tags: [] },
+                goodsForm: { id: null, group: 'なにわ男子', series: '', title: '', count: 1, image: '', tags: [] },
 
                 cleanString(str) {
                     if (!str) return '';
@@ -919,8 +978,9 @@
                             if (data.photos) {
                                 this.photos = data.photos.map(p => ({
                                     ...p,
-                                    series: this.cleanString(p.series),
+                                    series: this.cleanString(p.series) || '未分類',
                                     code: this.cleanString(p.code),
+                                    date: this.cleanString(p.date),
                                     era: p.era || 'Debut',
                                     group: p.group || 'なにわ男子',
                                     tags: p.tags || []
@@ -929,9 +989,10 @@
                             if (data.goods) {
                                 this.goods = data.goods.map(g => ({
                                     ...g,
-                                    series: this.cleanString(g.series),
+                                    series: this.cleanString(g.series) || '未分類',
                                     title: this.cleanString(g.title),
-                                    group: g.group || 'なにわ男子'
+                                    group: g.group || 'なにわ男子',
+                                    tags: g.tags || []
                                 }));
                             }
                             if (data.seriesMemory) this.seriesMemory = data.seriesMemory;
@@ -1030,25 +1091,30 @@
                     }
                 },
 
-                addTagToPhoto() {
-                    if (!this.tagInput) return;
-                    let cleanTag = this.tagInput.trim().replace(/^#/, '');
-                    if (cleanTag && !this.photoForm.tags.includes(cleanTag)) {
-                        this.photoForm.tags.push(cleanTag);
+                addTagToItem(type) {
+                    const inputVal = type === 'photo' ? this.tagInput : this.goodsTagInput;
+                    if (!inputVal) return;
+                    let cleanTag = inputVal.trim().replace(/^#/, '');
+                    const targetForm = type === 'photo' ? this.photoForm : this.goodsForm;
+                    if (cleanTag && !targetForm.tags.includes(cleanTag)) {
+                        targetForm.tags.push(cleanTag);
                     }
-                    this.tagInput = '';
+                    if (type === 'photo') this.tagInput = '';
+                    if (type === 'goods') this.goodsTagInput = '';
                 },
 
-                selectCandidateTag(tag) {
-                    if (!this.photoForm.tags.includes(tag)) {
-                        this.photoForm.tags.push(tag);
+                selectCandidateTag(tag, type) {
+                    const targetForm = type === 'photo' ? this.photoForm : this.goodsForm;
+                    if (!targetForm.tags.includes(tag)) {
+                        targetForm.tags.push(tag);
                     } else {
-                        this.photoForm.tags = this.photoForm.tags.filter(t => t !== tag);
+                        targetForm.tags = targetForm.tags.filter(t => t !== tag);
                     }
                 },
 
-                removeTagFromPhoto(index) {
-                    this.photoForm.tags.splice(index, 1);
+                removeTagFromItem(index, type) {
+                    const targetForm = type === 'photo' ? this.photoForm : this.goodsForm;
+                    targetForm.tags.splice(index, 1);
                 },
 
                 get allExistingTags() {
@@ -1056,6 +1122,11 @@
                     this.photos.forEach(p => {
                         if (p.tags && Array.isArray(p.tags)) {
                             p.tags.forEach(t => tagSet.add(t));
+                        }
+                    });
+                    this.goods.forEach(g => {
+                        if (g.tags && Array.isArray(g.tags)) {
+                            g.tags.forEach(t => tagSet.add(t));
                         }
                     });
                     return [...tagSet];
@@ -1068,7 +1139,7 @@
 
                 onSeriesInputChange() {
                     const cleanName = this.cleanString(this.photoForm.series);
-                    if (this.seriesMemory[cleanName]) {
+                    if (cleanName && this.seriesMemory[cleanName]) {
                         this.photoForm.era = this.seriesMemory[cleanName].era || 'Debut';
                         if (this.seriesMemory[cleanName].group) {
                             this.photoForm.group = this.seriesMemory[cleanName].group;
@@ -1085,24 +1156,30 @@
                     }
                 },
 
-                getYearFromPhoto(item) {
+                getSortDateVal(item) {
+                    if (item.date) {
+                        const digits = item.date.replace(/[^0-9]/g, '');
+                        if (digits.length >= 6) return parseInt(digits.substring(0, 6), 10);
+                        if (digits.length === 4) return parseInt(digits + '00', 10);
+                    }
                     const code = this.cleanString(item.code);
                     const m = code.match(/([0-9]{2})/);
                     if (m) {
                         const yy = parseInt(m[1], 10);
-                        return yy < 50 ? 2000 + yy : 1900 + yy;
+                        const fullYear = yy < 50 ? 2000 + yy : 1900 + yy;
+                        return fullYear * 100;
                     }
-                    return 2026;
+                    return 202600;
                 },
 
                 get totalPhotosCount() { return this.photos.length; },
                 get totalCardsCount() { return this.photos.reduce((sum, p) => sum + (Number(p.count) || 0), 0); },
                 get totalPhotosPrice() { return this.photos.reduce((sum, p) => sum + ((Number(p.count) || 0) * (Number(p.price) || 180)), 0); },
-                get existingPhotoSeriesNames() { return [...new Set(this.photos.map(p => p.series))]; },
+                get existingPhotoSeriesNames() { return [...new Set(this.photos.map(p => p.series).filter(Boolean))]; },
 
                 get totalGoodsCount() { return this.goods.length; },
                 get totalGoodsItems() { return this.goods.reduce((sum, g) => sum + (Number(g.count) || 0), 0); },
-                get existingGoodsSeriesNames() { return [...new Set(this.goods.map(g => g.series))]; },
+                get existingGoodsSeriesNames() { return [...new Set(this.goods.map(g => g.series).filter(Boolean))]; },
 
                 get filteredPhotoSeriesList() {
                     const q = this.searchQuery.toLowerCase().trim();
@@ -1111,55 +1188,57 @@
 
                     const filtered = this.photos.filter(p => {
                         const matchesGroup = (groupFilter === 'ALL' || p.group === groupFilter);
-                        const matchesSearch = !q || p.series.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+                        const matchesSearch = !q || p.series.toLowerCase().includes(q) || (p.code && p.code.toLowerCase().includes(q));
                         const matchesTag = !tagFilter || (p.tags && p.tags.includes(tagFilter));
                         return matchesGroup && matchesSearch && matchesTag;
                     });
 
                     const groups = {};
                     filtered.forEach(item => {
-                        const cleanSeries = this.cleanString(item.series);
+                        const cleanSeries = this.cleanString(item.series) || '未分類';
                         if (!groups[cleanSeries]) {
                             groups[cleanSeries] = {
                                 name: cleanSeries,
                                 era: item.era || 'Debut',
                                 items: [],
-                                latestYear: 0
+                                latestDateVal: 0
                             };
                         }
                         groups[cleanSeries].items.push(item);
-                        const y = this.getYearFromPhoto(item);
-                        if (y > groups[cleanSeries].latestYear) {
-                            groups[cleanSeries].latestYear = y;
+                        const dVal = this.getSortDateVal(item);
+                        if (dVal > groups[cleanSeries].latestDateVal) {
+                            groups[cleanSeries].latestDateVal = dVal;
                         }
                     });
 
-                    return Object.values(groups).sort((a, b) => b.latestYear - a.latestYear);
+                    return Object.values(groups).sort((a, b) => b.latestDateVal - a.latestDateVal);
                 },
 
-                getSeriesTotalCount(name) { return this.photos.filter(p => this.cleanString(p.series) === name).reduce((sum, p) => sum + (Number(p.count) || 0), 0); },
-                getSeriesTotalPrice(name) { return this.photos.filter(p => this.cleanString(p.series) === name).reduce((sum, p) => sum + ((Number(p.count) || 0) * (Number(p.price) || 180)), 0); },
+                getSeriesTotalCount(name) { return this.photos.filter(p => (this.cleanString(p.series) || '未分類') === name).reduce((sum, p) => sum + (Number(p.count) || 0), 0); },
+                getSeriesTotalPrice(name) { return this.photos.filter(p => (this.cleanString(p.series) || '未分類') === name).reduce((sum, p) => sum + ((Number(p.count) || 0) * (Number(p.price) || 180)), 0); },
 
                 get filteredGoodsSeriesList() {
                     const q = this.searchQuery.toLowerCase().trim();
                     const groupFilter = this.selectedGroupFilter;
+                    const tagFilter = this.selectedTagFilter;
 
                     const filtered = this.goods.filter(g => {
                         const matchesGroup = (groupFilter === 'ALL' || g.group === groupFilter);
                         const matchesSearch = !q || g.series.toLowerCase().includes(q) || g.title.toLowerCase().includes(q);
-                        return matchesGroup && matchesSearch;
+                        const matchesTag = !tagFilter || (g.tags && g.tags.includes(tagFilter));
+                        return matchesGroup && matchesSearch && matchesTag;
                     });
 
                     const groups = {};
                     filtered.forEach(item => {
-                        const cleanSeries = this.cleanString(item.series);
+                        const cleanSeries = this.cleanString(item.series) || '未分類';
                         if (!groups[cleanSeries]) groups[cleanSeries] = [];
                         groups[cleanSeries].push(item);
                     });
                     return Object.keys(groups).map(name => ({ name, items: groups[name] }));
                 },
 
-                getGoodsSeriesTotalItems(name) { return this.goods.filter(g => this.cleanString(g.series) === name).reduce((sum, g) => sum + (Number(g.count) || 0), 0); },
+                getGoodsSeriesTotalItems(name) { return this.goods.filter(g => (this.cleanString(g.series) || '未分類') === name).reduce((sum, g) => sum + (Number(g.count) || 0), 0); },
 
                 updatePhotoCount(id, delta) {
                     const item = this.photos.find(p => p.id === id);
@@ -1174,7 +1253,7 @@
                     if (!this.selectedPhoto) return;
                     const item = this.photos.find(p => p.id === this.selectedPhoto.id);
                     if (item) {
-                        item.series = this.cleanString(this.selectedPhoto.series);
+                        item.series = this.cleanString(this.selectedPhoto.series) || '未分類';
                         this.savePhotosToStorage();
                     }
                 },
@@ -1192,7 +1271,7 @@
                     if (!this.selectedGoods) return;
                     const item = this.goods.find(g => g.id === this.selectedGoods.id);
                     if (item) {
-                        item.series = this.cleanString(this.selectedGoods.series);
+                        item.series = this.cleanString(this.selectedGoods.series) || '未分類';
                         this.saveGoodsToStorage();
                     }
                 },
@@ -1292,7 +1371,7 @@
                 openAddPhotoModal() {
                     this.isEditingPhoto = false;
                     const defaultGroup = this.selectedGroupFilter !== 'ALL' ? this.selectedGroupFilter : (this.groupList[0] || 'なにわ男子');
-                    this.photoForm = { id: null, group: defaultGroup, series: this.existingPhotoSeriesNames[0] || '', era: 'Debut', code: '', count: 1, price: 180, image: '', tags: [] };
+                    this.photoForm = { id: null, group: defaultGroup, series: this.existingPhotoSeriesNames[0] || '', era: 'Debut', code: '', date: '', count: 1, price: 180, image: '', tags: [] };
                     this.tagInput = '';
                     this.showAddPhotoModal = true;
                 },
@@ -1306,14 +1385,16 @@
                 openPhotoDetailModal(item) { this.selectedPhoto = item; this.showPhotoDetailModal = true; },
                 
                 savePhoto() {
-                    if (!this.photoForm.series || !this.photoForm.code) return;
-                    this.photoForm.series = this.cleanString(this.photoForm.series);
+                    this.photoForm.series = this.cleanString(this.photoForm.series) || '未分類';
                     this.photoForm.code = this.cleanString(this.photoForm.code);
+                    this.photoForm.date = this.cleanString(this.photoForm.date);
 
-                    this.seriesMemory[this.photoForm.series] = {
-                        era: this.photoForm.era,
-                        group: this.photoForm.group
-                    };
+                    if (this.photoForm.series !== '未分類') {
+                        this.seriesMemory[this.photoForm.series] = {
+                            era: this.photoForm.era,
+                            group: this.photoForm.group
+                        };
+                    }
 
                     if (this.isEditingPhoto) {
                         const idx = this.photos.findIndex(p => p.id === this.photoForm.id);
@@ -1349,20 +1430,22 @@
                 openAddGoodsModal() {
                     this.isEditingGoods = false;
                     const defaultGroup = this.selectedGroupFilter !== 'ALL' ? this.selectedGroupFilter : (this.groupList[0] || 'なにわ男子');
-                    this.goodsForm = { id: null, group: defaultGroup, series: this.existingGoodsSeriesNames[0] || '', title: '', count: 1, image: '' };
+                    this.goodsForm = { id: null, group: defaultGroup, series: this.existingGoodsSeriesNames[0] || '', title: '', count: 1, image: '', tags: [] };
+                    this.goodsTagInput = '';
                     this.showAddGoodsModal = true;
                 },
                 openEditGoodsModal(item) {
                     this.isEditingGoods = true;
-                    this.goodsForm = { ...item };
+                    this.goodsForm = { ...item, tags: item.tags ? [...item.tags] : [] };
+                    this.goodsTagInput = '';
                     this.showGoodsDetailModal = false;
                     this.showAddGoodsModal = true;
                 },
                 openGoodsDetailModal(item) { this.selectedGoods = item; this.showGoodsDetailModal = true; },
                 
                 saveGoods() {
-                    if (!this.goodsForm.series || !this.goodsForm.title) return;
-                    this.goodsForm.series = this.cleanString(this.goodsForm.series);
+                    if (!this.goodsForm.title) return;
+                    this.goodsForm.series = this.cleanString(this.goodsForm.series) || '未分類';
                     this.goodsForm.title = this.cleanString(this.goodsForm.title);
 
                     if (this.isEditingGoods) {
