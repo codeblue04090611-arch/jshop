@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "jphoto",
     "public": ".",
     "ignore": [
       "firebase.json",
