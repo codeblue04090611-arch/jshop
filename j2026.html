@@ -2,7 +2,8 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- スマホでの勝手な画面拡大を防ぐ設定 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Goods & Photo Collector - Modern Edition</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -55,6 +56,8 @@
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .ios-shadow { box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05); }
         .floating-bar-shadow { box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12); }
+        /* スマホでの自動ズーム・フォーカス時拡大を防止する保険 */
+        input, select, textarea { font-size: 16px !important; }
     </style>
 </head>
 <body class="bg-[#f8f9fa] text-slate-800 antialiased min-h-screen pb-32" x-data="photoApp()" x-init="initApp()">
@@ -70,11 +73,11 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">メールアドレス</label>
-                    <input type="email" x-model="authEmail" class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-pinkaccent-300">
+                    <input type="email" x-model="authEmail" class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-pinkaccent-300">
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">パスワード</label>
-                    <input type="password" x-model="authPassword" placeholder="6文字以上" class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-pinkaccent-300">
+                    <input type="password" x-model="authPassword" placeholder="6文字以上" class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-pinkaccent-300">
                 </div>
 
                 <p x-show="authError" class="text-xs text-rose-500 text-center font-bold" x-text="authError"></p>
@@ -104,7 +107,7 @@
                     <div class="relative flex-1">
                         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                         <input type="text" x-model="searchQuery" placeholder="検索..." 
-                            class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/80 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 transition placeholder-slate-400 shadow-2xs">
+                            class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/80 rounded-2xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 transition placeholder-slate-400 shadow-2xs">
                     </div>
 
                     <div class="bg-slate-200/60 p-1 rounded-2xl flex items-center shrink-0">
@@ -409,7 +412,7 @@
 
                 <div>
                     <input type="text" x-model="newGroupNameInput" @keydown.enter.prevent.stop="confirmAddGroup()" placeholder="例: なにわ男子, 美 少年..." 
-                        class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 mb-4">
+                        class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 mb-4">
 
                     <div class="flex items-center gap-2">
                         <button type="button" @click="showAddGroupModal = false" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
@@ -497,7 +500,7 @@
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">シリーズ名</label>
                         <input type="text" x-model="photoForm.series" @input="onSeriesInputChange()" list="photo-series-list" 
-                            class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
+                            class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
                         <datalist id="photo-series-list">
                             <template x-for="name in existingPhotoSeriesNames" :key="name"><option :value="name"></option></template>
                         </datalist>
@@ -507,12 +510,12 @@
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">発売年月</label>
                             <input type="text" x-model="photoForm.date" placeholder="2024-05" 
-                                class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
                         </div>
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">通し番号</label>
                             <input type="text" x-model="photoForm.code" @input="onCodeInputChange()" placeholder="ND24-120" 
-                                class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-base font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
                         </div>
                     </div>
 
@@ -520,12 +523,12 @@
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">所持枚数</label>
                             <input type="number" min="0" x-model.number="photoForm.count" required 
-                                class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-base font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
                         </div>
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">単価(円)</label>
                             <input type="number" min="0" x-model.number="photoForm.price" required 
-                                class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                class="w-full px-3 py-3 bg-slate-50 border-0 rounded-2xl text-base font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
                         </div>
                     </div>
 
@@ -557,7 +560,7 @@
                         </div>
 
                         <input type="text" x-model="tagInput" @keydown.enter.prevent.stop="addTagToItem('photo')" placeholder="追加するタグを入力" 
-                            class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 mb-2">
+                            class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 mb-2">
 
                         <template x-if="allExistingTags.length > 0">
                             <div class="space-y-1">
@@ -624,7 +627,7 @@
                         <div>
                             <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">シリーズ名</label>
                             <input type="text" x-model="selectedPhoto.series" list="photo-series-list-detail" @change="updateDetailPhoto()" 
-                                class="w-full px-3.5 py-2 bg-slate-50 border-0 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                class="w-full px-3.5 py-2 bg-slate-50 border-0 rounded-xl text-base font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900">
                             <datalist id="photo-series-list-detail">
                                 <template x-for="name in existingPhotoSeriesNames" :key="name"><option :value="name"></option></template>
                             </datalist>
@@ -719,7 +722,7 @@
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">シリーズ・ツアー名 <span class="text-rose-500">*</span></label>
                         <input type="text" x-model="goodsForm.series" list="goods-series-list" required 
-                            class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
+                            class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
                         <datalist id="goods-series-list">
                             <template x-for="name in existingGoodsSeriesNames" :key="name"><option :value="name"></option></template>
                         </datalist>
@@ -729,12 +732,12 @@
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">グッズ名 <span class="text-rose-500">*</span></label>
                             <input type="text" x-model="goodsForm.title" required 
-                                class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
                         </div>
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">所持数</label>
                             <input type="number" min="0" x-model.number="goodsForm.count" required 
-                                class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-base font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
                         </div>
                     </div>
 
@@ -750,7 +753,7 @@
                         </div>
 
                         <input type="text" x-model="goodsTagInput" @keydown.enter.prevent.stop="addTagToItem('goods')" placeholder="追加するタグを入力" 
-                            class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 mb-2">
+                            class="w-full px-4 py-3 bg-slate-50 border-0 rounded-2xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 mb-2">
 
                         <template x-if="allExistingTags.length > 0">
                             <div class="space-y-1">
@@ -817,7 +820,7 @@
                         <div>
                             <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">シリーズ・ツアー名</label>
                             <input type="text" x-model="selectedGoods.series" list="goods-series-list-detail" @change="updateDetailGoods()" 
-                                class="w-full px-3.5 py-2 bg-slate-50 border-0 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                class="w-full px-3.5 py-2 bg-slate-50 border-0 rounded-xl text-base font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900">
                             <datalist id="goods-series-list-detail">
                                 <template x-for="name in existingGoodsSeriesNames" :key="name"><option :value="name"></option></template>
                             </datalist>
